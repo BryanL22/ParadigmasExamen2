@@ -19,7 +19,7 @@ Reglas de negocio: el código es obligatorio, único y se guarda en mayúsculas;
 ## Arquitectura
 
 ```
-Examen2/src/main/java/co/edu/poli/Examen2/
+Examen2/src/main/java/co/edu/poli/examen2/
 ├── dominio/                    # Núcleo: sin dependencias externas
 │   ├── modelo/                 # ExamenSangre (+Builder), TipoSangre, FactorRh
 │   └── excepcion/              # ExamenInvalidoException, ExamenDuplicadoException
@@ -90,7 +90,7 @@ mvn javadoc:javadoc     # salida en target/reports/apidocs (o target/site/apidoc
 3. Ejecute:
    ```bash
    cd Examen2
-   mvn clean verify sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=<TOKEN>
+   mvn clean verify sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.login=<TOKEN>   # en SonarQube 10+ use -Dsonar.token
    ```
 
 El `pom.xml` ya configura la clave del proyecto y la ruta del informe de JaCoCo. La captura del resumen está en la wiki.
