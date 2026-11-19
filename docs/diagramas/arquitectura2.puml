@@ -1,0 +1,90 @@
+@startuml arquitectura2
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+hide empty members
+title Arquitectura Hexagonal (Ports & Adapters) - dependencias apuntan hacia el dominio
+
+package "Adaptadores de entrada - JavaFX" #F9E79F {
+  class App <<JavaFX Application>>
+  class PrimaryController <<Controller>>
+  class "primary.fxml" as fxml <<View>>
+}
+package "Configuracion - Composition Root" #EAEDED {
+  class ContenedorDependencias <<Composition Root>>
+}
+package "Aplicación" #D6EAF8 {
+  package "Puertos de entrada" #AED6F1 {
+    interface RegistrarExamenUseCase
+    interface ListarExamenesUseCase
+    interface SerializarExamenesUseCase
+    interface DeserializarExamenesUseCase
+  }
+  package "servicio (casos de uso)" #D6EAF8 {
+    class RegistrarExamenService
+    class ListarExamenesService
+    class SerializarExamenesService
+    class DeserializarExamenesService
+  }
+  package "Fachada y eventos" #D6EAF8 {
+    class GestionExamenesFacade
+    class PublicadorEventos
+    interface ObservadorExamen
+  }
+  package "Puertos de salida" #AED6F1 {
+    interface ExamenRepositoryPort
+    interface AlmacenamientoExamenesPort
+  }
+}
+package "Dominio" #D5F5E3 {
+  class ExamenSangre <<Entity>>
+  enum TipoSangre
+  enum FactorRh
+}
+package "Adaptadores de salida" #FADBD8 {
+  class RepositorioExamenesEnMemoria
+  class AlmacenamientoArchivoSerializado
+  class ExamenRegistro <<Serializable record>>
+  class ObservadorBitacora
+}
+class "examenes.dat" as dat <<archivo binario>>
+
+App ..> ContenedorDependencias : obtiene fachada
+App ..> fxml
+fxml ..> PrimaryController
+PrimaryController --> GestionExamenesFacade
+PrimaryController ..|> ObservadorExamen : (lambda)
+
+GestionExamenesFacade --> RegistrarExamenUseCase
+GestionExamenesFacade --> ListarExamenesUseCase
+GestionExamenesFacade --> SerializarExamenesUseCase
+GestionExamenesFacade --> DeserializarExamenesUseCase
+
+RegistrarExamenService ..|> RegistrarExamenUseCase
+ListarExamenesService ..|> ListarExamenesUseCase
+SerializarExamenesService ..|> SerializarExamenesUseCase
+DeserializarExamenesService ..|> DeserializarExamenesUseCase
+
+RegistrarExamenService --> ExamenRepositoryPort
+ListarExamenesService --> ExamenRepositoryPort
+SerializarExamenesService --> AlmacenamientoExamenesPort
+DeserializarExamenesService --> AlmacenamientoExamenesPort
+RegistrarExamenService --> PublicadorEventos
+PublicadorEventos o--> ObservadorExamen
+
+RegistrarExamenService ..> ExamenSangre
+ExamenSangre --> TipoSangre
+ExamenSangre --> FactorRh
+
+RepositorioExamenesEnMemoria ..|> ExamenRepositoryPort
+AlmacenamientoArchivoSerializado ..|> AlmacenamientoExamenesPort
+AlmacenamientoArchivoSerializado ..> ExamenRegistro
+AlmacenamientoArchivoSerializado ..> dat : ObjectOutput/InputStream
+ObservadorBitacora ..|> ObservadorExamen
+
+ContenedorDependencias ..> RepositorioExamenesEnMemoria : crea
+ContenedorDependencias ..> AlmacenamientoArchivoSerializado : crea
+ContenedorDependencias ..> GestionExamenesFacade : crea
+@enduml

@@ -1,0 +1,105 @@
+@startuml dominio3
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+title Diagrama de clases con patrones GoF: Builder (creacional), Facade (estructural), Observer (comportamiento)
+
+package "Builder (creacional)" #E8F8F5 {
+  class ExamenSangre <<Product>> {
+    - codigo : String
+    - nombrePaciente : String
+    - costo : double
+    - tipoSangre : TipoSangre
+    - factorRh : FactorRh
+    - ExamenSangre(b : Builder)
+    + {static} builder() : Builder
+    + getGrupoSanguineo() : String
+  }
+  class "ExamenSangre.Builder" as Builder <<Builder>> {
+    + codigo(String) : Builder
+    + nombrePaciente(String) : Builder
+    + costo(double) : Builder
+    + tipoSangre(TipoSangre) : Builder
+    + factorRh(FactorRh) : Builder
+    + build() : ExamenSangre
+  }
+  enum TipoSangre
+  enum FactorRh
+}
+
+package "Facade (estructural)" #D6EAF8 {
+  class GestionExamenesFacade <<Facade>> {
+    + registrar(e : ExamenSangre) : ExamenSangre
+    + listar() : List<ExamenSangre>
+    + serializar() : int
+    + deserializar() : int
+    + suscribir(o : ObservadorExamen)
+  }
+  interface RegistrarExamenUseCase
+  interface ListarExamenesUseCase
+  interface SerializarExamenesUseCase
+  interface DeserializarExamenesUseCase
+}
+
+package "Observer (comportamiento)" #FDEBD0 {
+  class PublicadorEventos <<Subject>> {
+    - observadores : List<ObservadorExamen>
+    + suscribir(o : ObservadorExamen)
+    + desuscribir(o : ObservadorExamen)
+    + publicar(tipo : TipoEvento, mensaje : String)
+  }
+  interface ObservadorExamen <<Observer>> {
+    + notificar(e : EventoExamen)
+  }
+  class EventoExamen <<record>> {
+    tipo : TipoEvento
+    mensaje : String
+  }
+  enum TipoEvento {
+    EXAMEN_REGISTRADO
+    EXAMENES_SERIALIZADOS
+    EXAMENES_DESERIALIZADOS
+  }
+  class ObservadorBitacora <<ConcreteObserver>>
+}
+
+class PrimaryController <<Client / ConcreteObserver>> {
+  - fachada : GestionExamenesFacade
+  - handleGuardar()
+  - mostrarEvento(e : EventoExamen)
+}
+class RegistrarExamenService
+class SerializarExamenesService
+class DeserializarExamenesService
+class ListarExamenesService
+
+ExamenSangre +-- Builder
+Builder ..> ExamenSangre : <<create>>
+ExamenSangre --> TipoSangre
+ExamenSangre --> FactorRh
+
+PrimaryController ..> Builder : construye examen
+PrimaryController --> GestionExamenesFacade
+PrimaryController ..|> ObservadorExamen : this::mostrarEvento
+
+GestionExamenesFacade --> RegistrarExamenUseCase
+GestionExamenesFacade --> ListarExamenesUseCase
+GestionExamenesFacade --> SerializarExamenesUseCase
+GestionExamenesFacade --> DeserializarExamenesUseCase
+GestionExamenesFacade --> PublicadorEventos
+
+RegistrarExamenService ..|> RegistrarExamenUseCase
+ListarExamenesService ..|> ListarExamenesUseCase
+SerializarExamenesService ..|> SerializarExamenesUseCase
+DeserializarExamenesService ..|> DeserializarExamenesUseCase
+
+RegistrarExamenService --> PublicadorEventos : publicar()
+SerializarExamenesService --> PublicadorEventos : publicar()
+DeserializarExamenesService --> PublicadorEventos : publicar()
+
+PublicadorEventos o--> "*" ObservadorExamen
+ObservadorExamen ..> EventoExamen
+EventoExamen --> TipoEvento
+ObservadorBitacora ..|> ObservadorExamen
+@enduml

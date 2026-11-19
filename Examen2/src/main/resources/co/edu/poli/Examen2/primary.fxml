@@ -19,7 +19,7 @@
       style="-fx-background-color: #f4f6f9; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 4);"
       xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="co.edu.poli.Examen2.controlador.PrimaryController">
+      fx:controller="co.edu.poli.Examen2.infraestructura.entrada.javafx.PrimaryController">
 
    <padding>
       <Insets bottom="28.0" left="30.0" right="30.0" top="28.0" />
@@ -119,7 +119,7 @@
 
    <Separator />
 
-   <!-- Fila 1: Guardar y Limpiar -->
+   <!-- Fila 1: Guardar, Listar, Serializar, Deserializar -->
    <HBox spacing="12.0" alignment="CENTER">
       <Button fx:id="btnGuardar"
               text="💾  Guardar"
@@ -147,6 +147,17 @@
               prefWidth="150.0" prefHeight="34.0"
               onAction="#handleDeserializar"
               style="-fx-background-color: #16a085; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;">
+         <font><Font size="13.0" /></font>
+      </Button>
+   </HBox>
+
+   <!-- Fila 2: Limpiar formulario -->
+   <HBox spacing="12.0" alignment="CENTER">
+      <Button fx:id="btnLimpiar"
+              text="🧹  Limpiar"
+              prefWidth="150.0" prefHeight="34.0"
+              onAction="#handleLimpiar"
+              style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;">
          <font><Font size="13.0" /></font>
       </Button>
    </HBox>

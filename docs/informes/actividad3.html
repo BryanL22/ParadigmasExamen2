@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Actividad 3 - Patrones GoF</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<h1>Actividad 3 · Implementación de tres patrones GoF</h1>
+<div class="sub">Proyecto: Exámenes de Sangre (refactorizado a Arquitectura Hexagonal)</div>
+
+<h2>1. Resumen</h2>
+<table>
+<tr><th>Categoría</th><th>Patrón</th><th>Clases participantes</th><th>Problema del diagnóstico que ataca</th></tr>
+<tr><td>Creacional</td><td><b>Builder</b></td><td><code>ExamenSangre</code>, <code>ExamenSangre.Builder</code></td><td>Ausencia de modelo, obsesión por primitivos, validaciones dispersas.</td></tr>
+<tr><td>Estructural</td><td><b>Facade</b></td><td><code>GestionExamenesFacade</code>, 4 puertos de entrada</td><td>Acoplamiento del controlador a múltiples colaboradores / controlador “Dios”.</td></tr>
+<tr><td>Comportamiento</td><td><b>Observer</b></td><td><code>PublicadorEventos</code>, <code>ObservadorExamen</code>, <code>EventoExamen</code>, <code>ObservadorBitacora</code>, <code>PrimaryController</code></td><td>Casos de uso que tendrían que escribir directamente en el <code>TextArea</code>; sin auditoría.</td></tr>
+</table>
+
+<h2>2. Diagrama UML de clases actualizado</h2>
+<img src="../diagramas/dominio3.png" alt="Diagrama de clases con patrones">
+<div class="fig">Figura 1. Diagrama de clases con los tres patrones (archivo <code>dominio3.png</code>).</div>
+
+<h2 class="salto">3. Builder (creacional)</h2>
+<h3>Problema de diseño</h3>
+<p>Un examen tiene cinco atributos obligatorios con reglas (código no vacío y normalizado, nombre no vacío, costo &gt; 0,
+tipo de sangre y factor Rh definidos). Con un constructor de cinco parámetros —dos <code>String</code> seguidos— es
+fácil intercambiar argumentos, y con <i>setters</i> el objeto puede quedar a medio construir o inválido. En el diseño
+original no había entidad y la validación habría quedado repartida en el controlador.</p>
+<h3>Justificación</h3>
+<p>Builder separa la construcción de la representación: los datos se agregan paso a paso con métodos con nombre y
+<code>build()</code> valida todas las invariantes antes de crear el objeto. El constructor de <code>ExamenSangre</code> es privado,
+por lo que <b>no existe otra forma</b> de obtener un examen inválido. La misma construcción se reutiliza al
+deserializar (<code>ExamenRegistro.aDominio()</code>), revalidando datos leídos de disco.</p>
+<pre>ExamenSangre examen = ExamenSangre.builder()
+        .codigo(txtCodigoExamen.getText())
+        .nombrePaciente(txtNombrePaciente.getText())
+        .costo(leerCosto())
+        .tipoSangre(TipoSangre.desdeTexto(cmbTipoSangre.getValue()))
+        .factorRh(rbNegativo.isSelected() ? FactorRh.NEGATIVO : FactorRh.POSITIVO)
+        .build();   // lanza ExamenInvalidoException si se incumple una regla</pre>
+<h3>Beneficios frente al original</h3>
+<ul>
+<li>Entidad <b>inmutable</b> y siempre válida; las reglas de negocio viven en el dominio, no en la UI.</li>
+<li>Código de creación legible y sin errores por orden de parámetros.</li>
+<li>Validación única reutilizada por la UI y por el adaptador de archivo; probada en <code>ExamenSangreTest</code> (7 pruebas).</li>
+</ul>
+
+<h2>4. Facade (estructural)</h2>
+<h3>Problema de diseño</h3>
+<p>Con la arquitectura hexagonal existen cuatro puertos de entrada (registrar, listar, serializar, deserializar) más
+el publicador de eventos. Si el controlador JavaFX dependiera directamente de los cinco, su constructor y su
+configuración crecerían con cada caso de uso nuevo y volvería a concentrar conocimiento del subsistema.</p>
+<h3>Justificación</h3>
+<p><code>GestionExamenesFacade</code> ofrece una interfaz simple y unificada al subsistema de aplicación: el adaptador de
+entrada recibe <b>un solo</b> objeto (inyectado por <code>ContenedorDependencias</code> a través de un <code>controllerFactory</code>).
+La fachada no contiene lógica: solo delega en los puertos, por lo que los casos de uso siguen siendo independientes
+y testeables por separado.</p>
+<h3>Beneficios frente al original</h3>
+<ul>
+<li>El controlador pasa de “clase Dios” potencial a un adaptador delgado que solo traduce eventos de la vista.</li>
+<li>Menor acoplamiento: la UI no conoce servicios, repositorios ni archivos.</li>
+<li>Un nuevo adaptador de entrada (consola, REST) reutiliza la misma fachada sin duplicar lógica.</li>
+<li>Probada de extremo a extremo en <code>GestionExamenesIntegracionTest</code>.</li>
+</ul>
+
+<h2>5. Observer (comportamiento)</h2>
+<h3>Problema de diseño</h3>
+<p>Tras registrar o (de)serializar, el resultado debe mostrarse en el área de mensajes. Si los casos de uso
+escribieran en el <code>TextArea</code>, la capa de aplicación dependería de JavaFX (violando la regla de dependencias
+hexagonal); si cada manejador construyera su propio mensaje, el texto de negocio quedaría duplicado en la UI. Además se
+requiere dejar traza (auditoría) de las operaciones sin modificar los casos de uso.</p>
+<h3>Justificación</h3>
+<p>Observer define una dependencia uno-a-muchos: <code>PublicadorEventos</code> (sujeto) notifica un <code>EventoExamen</code>
+a todos los <code>ObservadorExamen</code> suscritos. Los casos de uso solo conocen al sujeto. Hay dos observadores
+concretos: el controlador (<code>this::mostrarEvento</code>, que escribe en pantalla) y <code>ObservadorBitacora</code>
+(registro con <code>java.util.logging</code>).</p>
+<h3>Beneficios frente al original</h3>
+<ul>
+<li>La capa de aplicación no depende de la interfaz gráfica.</li>
+<li>Se agregan nuevos receptores (correo, archivo de auditoría) sin tocar los casos de uso: principio Abierto/Cerrado.</li>
+<li>Los eventos son verificables en pruebas (<code>PublicadorEventosTest</code>, <code>ServiciosExamenTest</code>).</li>
+</ul>
+
+<h2>6. Comparación global</h2>
+<table>
+<tr><th>Criterio</th><th>Diseño original</th><th>Diseño con hexagonal + patrones</th></tr>
+<tr><td>Acoplamiento</td><td>Toda la lógica destinada al controlador JavaFX</td><td>UI → Fachada → Puertos; adaptadores intercambiables</td></tr>
+<tr><td>Cohesión</td><td>Sin modelo; datos como texto</td><td>Entidad con reglas; un caso de uso por clase</td></tr>
+<tr><td>Extensibilidad</td><td>Cambios requieren editar el controlador</td><td>Nuevos adaptadores u observadores sin modificar el núcleo</td></tr>
+<tr><td>Mantenibilidad</td><td>0 pruebas; no arranca con Maven</td><td>17 pruebas JUnit 5, ~78 % de cobertura (JaCoCo), JavaDoc, Sonar</td></tr>
+</table>
+
+<h2>7. Patrones considerados y descartados</h2>
+<ul>
+<li><b>Singleton</b> para el repositorio: introduce estado global, justo lo que se criticó de <code>App.scene</code>; se prefirió inyección desde la raíz de composición.</li>
+<li><b>Strategy</b> para el formato de persistencia: el puerto <code>AlmacenamientoExamenesPort</code> ya permite intercambiar implementaciones; habría sido redundante.</li>
+<li><b>Decorator</b> sobre el repositorio para auditoría: Observer resuelve la auditoría a nivel de eventos de negocio con menos clases.</li>
+</ul>
+</body>
+</html>

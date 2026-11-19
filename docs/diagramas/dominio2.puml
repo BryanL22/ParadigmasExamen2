@@ -1,0 +1,58 @@
+@startuml dominio2
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+title Modelo de dominio (Arquitectura Hexagonal)
+
+package "dominio :: modelo" #E8F8F5 {
+  class ExamenSangre <<Entity>> {
+    - codigo : String
+    - nombrePaciente : String
+    - costo : double
+    - tipoSangre : TipoSangre
+    - factorRh : FactorRh
+    + getCodigo() : String
+    + getNombrePaciente() : String
+    + getCosto() : double
+    + getTipoSangre() : TipoSangre
+    + getFactorRh() : FactorRh
+    + getGrupoSanguineo() : String
+    + equals(o : Object) : boolean
+    + hashCode() : int
+  }
+  enum TipoSangre {
+    A
+    B
+    AB
+    O
+    + {static} desdeTexto(valor : String) : TipoSangre
+  }
+  enum FactorRh {
+    POSITIVO("+")
+    NEGATIVO("-")
+    - simbolo : String
+    + getSimbolo() : String
+  }
+}
+package "dominio :: excepcion" #FDEDEC {
+  class ExamenInvalidoException
+  class ExamenDuplicadoException
+  class RuntimeException
+}
+ExamenSangre "*" --> "1" TipoSangre
+ExamenSangre "*" --> "1" FactorRh
+ExamenInvalidoException --|> RuntimeException
+ExamenDuplicadoException --|> ExamenInvalidoException
+ExamenSangre ..> ExamenInvalidoException : <<throws>>
+TipoSangre ..> ExamenInvalidoException : <<throws>>
+
+note bottom of ExamenSangre
+  Reglas de negocio (invariantes):
+  - codigo obligatorio (se normaliza a MAYÚSCULAS)
+  - nombrePaciente obligatorio
+  - costo > 0
+  - tipoSangre y factorRh obligatorios
+  - identidad = codigo (único en el sistema)
+end note
+@enduml

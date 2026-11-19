@@ -1,0 +1,47 @@
+@startuml arquitectura1
+hide empty members
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+title Arquitectura original (proyecto base)
+
+package "vista" #F9E79F {
+  class App <<Application>> {
+    - {static} scene : Scene
+    + start(stage : Stage)
+    + {static} setRoot(fxml : String)
+    - {static} loadFXML(fxml : String) : Parent
+    + {static} main(args : String[])
+  }
+}
+package "controlador" #F5B7B1 {
+  class PrimaryController {
+    - txtCodigoExamen : TextField
+    - txtNombrePaciente : TextField
+    - txtCosto : TextField
+    - cmbTipoSangre : ComboBox<String>
+    - rbPositivo / rbNegativo : RadioButton
+    - tgFactorRH : ToggleGroup
+    - txtAreaMensajes : TextArea
+    + initialize()
+    - handleGuardar()   // vacío
+    - handleLimpiar()   // vacío, sin botón
+    - handleSerializar()   // vacío
+    - handleDeserializar() // vacío
+    - handleListar()   // vacío
+  }
+}
+package "resources" #D6EAF8 {
+  class "primary.fxml" as fxml <<View>>
+}
+note as N #FDEBD0
+    No existen: modelo de dominio, reglas de negocio,
+    casos de uso, persistencia ni pruebas.
+    Toda la lógica quedaría dentro del controlador
+    (clase "Dios" acoplada a JavaFX).
+end note
+App ..> fxml : carga
+fxml ..> PrimaryController : fx:controller (instancia por reflexión)
+App -[hidden]- N
+@enduml

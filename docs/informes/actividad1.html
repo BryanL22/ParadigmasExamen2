@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Actividad 1 - Diagnóstico del diseño original</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<h1>Actividad 1 · Diagnóstico del diseño original</h1>
+<div class="sub">Proyecto base: <code>WolframDev/ParadigmasExamen2</code> · Aplicación JavaFX “Exámenes de Sangre”</div>
+
+<h2>1. Descripción general</h2>
+<p>El proyecto base es una aplicación de escritorio JavaFX construida con Maven. Su objetivo es registrar exámenes
+de sangre de pacientes y permitir listarlos, guardarlos en archivo (serializar) y recuperarlos (deserializar).
+El código fuente consta solo de tres artefactos:</p>
+<table>
+<tr><th>Artefacto</th><th>Paquete</th><th>Responsabilidad actual</th></tr>
+<tr><td><code>App</code></td><td><code>co.edu.poli.Examen2.vista</code></td><td>Arranca JavaFX, carga <code>primary.fxml</code> y guarda la escena en un campo estático (<code>setRoot</code> global).</td></tr>
+<tr><td><code>PrimaryController</code></td><td><code>co.edu.poli.Examen2.controlador</code></td><td>Declara los controles de la vista (<code>@FXML</code>) y cinco manejadores de eventos, todos <b>vacíos</b>.</td></tr>
+<tr><td><code>primary.fxml</code></td><td>resources</td><td>Formulario: código, nombre del paciente, costo, tipo de sangre (A, B, AB, O), factor Rh (+/−); botones Guardar, Listar, Serializar, Deserializar; área de mensajes.</td></tr>
+</table>
+
+<h2>2. Funcionalidades identificadas</h2>
+<table>
+<tr><th>#</th><th>Funcionalidad</th><th>Elemento de UI</th><th>Estado en el original</th></tr>
+<tr><td>F1</td><td>Registrar (guardar) un examen</td><td>Botón “Guardar” → <code>handleGuardar()</code></td><td>Sin implementar</td></tr>
+<tr><td>F2</td><td>Listar los exámenes registrados</td><td>Botón “Listar” → <code>handleListar()</code></td><td>Sin implementar</td></tr>
+<tr><td>F3</td><td>Serializar exámenes a archivo</td><td>Botón “Serializar” → <code>handleSerializar()</code></td><td>Sin implementar</td></tr>
+<tr><td>F4</td><td>Deserializar exámenes desde archivo</td><td>Botón “Deserializar” → <code>handleDeserializar()</code></td><td>Sin implementar</td></tr>
+<tr><td>F5</td><td>Limpiar el formulario</td><td><code>handleLimpiar()</code></td><td>Sin implementar y <b>sin botón</b> en la vista</td></tr>
+<tr><td>F6</td><td>Mostrar mensajes / resultados</td><td><code>TextArea txtAreaMensajes</code></td><td>Solo declarado</td></tr>
+</table>
+
+<h2>3. Diagrama de arquitectura actual</h2>
+<img src="../diagramas/arquitectura1.png" alt="Arquitectura original" style="max-width:75%">
+<div class="fig">Figura 1. Estructura del proyecto original: arquitectura de dos “capas” de presentación (vista y controlador) sin modelo.</div>
+<p>La estructura sigue un MVC incompleto: existen la <b>Vista</b> (FXML + <code>App</code>) y el <b>Controlador</b>, pero no hay
+<b>Modelo</b>. El único lugar donde podría escribirse la lógica es el controlador, que JavaFX instancia por reflexión
+(<code>fx:controller</code>) con un constructor vacío, sin posibilidad de inyectarle dependencias.</p>
+
+<h2>4. Problemas de diseño</h2>
+
+<h3>4.1 Acoplamiento</h3>
+<table>
+<tr><th>Problema</th><th>Evidencia</th><th>Impacto</th><th>Severidad</th></tr>
+<tr><td>Lógica de negocio destinada al controlador de UI</td><td>Los manejadores <code>handleGuardar</code>, <code>handleSerializar</code>, etc. son el único punto de extensión.</td><td>Reglas, persistencia y presentación quedarían mezcladas y dependientes de JavaFX; imposible reutilizarlas o probarlas sin interfaz gráfica.</td><td class="sev-alta">Alta</td></tr>
+<tr><td>Controlador creado por reflexión sin inyección</td><td><code>fx:controller</code> en el FXML y <code>FXMLLoader</code> sin <code>controllerFactory</code>.</td><td>El controlador tendría que crear con <code>new</code> sus repositorios/servicios (dependencia de clases concretas).</td><td class="sev-alta">Alta</td></tr>
+<tr><td>Estado global estático</td><td><code>private static Scene scene</code> y <code>public static setRoot()</code> en <code>App</code>.</td><td>Cualquier clase puede cambiar la vista; acoplamiento oculto y difícil de probar.</td><td class="sev-media">Media</td></tr>
+<tr><td>Persistencia sin abstracción</td><td>No existe interfaz de almacenamiento.</td><td>La serialización con <code>ObjectOutputStream</code> se escribiría directamente en el controlador.</td><td class="sev-alta">Alta</td></tr>
+</table>
+
+<h3>4.2 Cohesión</h3>
+<table>
+<tr><th>Problema</th><th>Evidencia</th><th>Impacto</th><th>Severidad</th></tr>
+<tr><td>Ausencia de modelo de dominio</td><td>No existe la clase <code>Examen</code>; los datos viven solo como texto en controles.</td><td>No hay un lugar cohesivo para las reglas (código único, costo positivo, tipo de sangre válido).</td><td class="sev-alta">Alta</td></tr>
+<tr><td>Obsesión por primitivos</td><td>Tipo de sangre como <code>ComboBox&lt;String&gt;</code>; factor Rh como dos <code>RadioButton</code>; costo como texto.</td><td>Valores inválidos posibles; validaciones repetidas y dispersas.</td><td class="sev-media">Media</td></tr>
+<tr><td>Controlador “Dios” potencial</td><td>Una sola clase atendería captura, validación, negocio, persistencia y mensajes.</td><td>Viola SRP; baja cohesión y alta probabilidad de errores.</td><td class="sev-alta">Alta</td></tr>
+</table>
+
+<h3>4.3 Extensibilidad</h3>
+<ul>
+<li>Cambiar el formato de persistencia (archivo binario → JSON, base de datos) exigiría modificar el controlador: se viola el principio Abierto/Cerrado.</li>
+<li>Agregar una segunda interfaz (consola, REST) obligaría a duplicar la lógica, pues está atada a JavaFX.</li>
+<li>No existe un mecanismo para notificar resultados a más de un destino (pantalla, bitácora/auditoría).</li>
+</ul>
+
+<h3>4.4 Mantenibilidad</h3>
+<table>
+<tr><th>Problema</th><th>Evidencia</th><th>Severidad</th></tr>
+<tr><td>La aplicación no arranca con Maven</td><td><code>pom.xml</code> declara <code>mainClass co.edu.poli.Examen2.App</code>, pero la clase está en <code>co.edu.poli.Examen2.vista.App</code>: <code>mvn javafx:run</code> falla.</td><td class="sev-alta">Alta</td></tr>
+<tr><td>Sin pruebas unitarias</td><td>No existe <code>src/test</code> ni dependencia de JUnit.</td><td class="sev-alta">Alta</td></tr>
+<tr><td>Sin documentación</td><td>Sin JavaDoc ni README técnico (solo guía de fork).</td><td class="sev-media">Media</td></tr>
+<tr><td>Funcionalidad huérfana</td><td><code>handleLimpiar()</code> no tiene botón asociado en el FXML.</td><td class="sev-baja">Baja</td></tr>
+<tr><td>Dependencias desactualizadas</td><td>Java 11 y JavaFX 13 (2019); el FXML declara <code>javafx/21</code>.</td><td class="sev-media">Media</td></tr>
+<tr><td>Artefactos generados versionados</td><td>Carpeta <code>target/</code> y configuración de Eclipse (<code>.settings</code>, <code>.classpath</code>) incluidas.</td><td class="sev-baja">Baja</td></tr>
+<tr><td>Convención de nombres</td><td>Paquete <code>co.edu.poli.Examen2</code> con mayúscula (regla Sonar java:S120).</td><td class="sev-baja">Baja</td></tr>
+</table>
+
+<h2>5. Conclusión y líneas de mejora</h2>
+<p>El diseño original es un esqueleto de presentación sin modelo, sin capas y sin abstracciones. Implementar las
+funcionalidades sobre él conduciría a un controlador monolítico, acoplado a JavaFX y a la tecnología de persistencia,
+imposible de probar de forma aislada. Las mejoras propuestas, desarrolladas en las actividades 2 y 3, son:</p>
+<ol>
+<li><b>Arquitectura Hexagonal</b>: dominio (<code>ExamenSangre</code>, <code>TipoSangre</code>, <code>FactorRh</code>) con sus reglas; casos de uso detrás de <b>puertos de entrada</b>; persistencia detrás de <b>puertos de salida</b>; JavaFX, memoria y archivo como <b>adaptadores</b>; raíz de composición que inyecta dependencias.</li>
+<li><b>Builder</b> (creacional) para construir entidades válidas e inmutables.</li>
+<li><b>Facade</b> (estructural) para que la UI dependa de un único punto de entrada a la aplicación.</li>
+<li><b>Observer</b> (comportamiento) para desacoplar los casos de uso de la presentación de mensajes y de la auditoría.</li>
+<li>Pruebas JUnit 5 con cobertura JaCoCo, JavaDoc, análisis SonarQube y corrección del <code>pom.xml</code>.</li>
+</ol>
+</body>
+</html>
